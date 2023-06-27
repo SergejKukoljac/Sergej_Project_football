@@ -1,0 +1,238 @@
+#File with some of the SQL code that was used to clean the data
+
+# one way to check for nulls 18/19
+SELECT *
+FROM `project-football-388908.Primier_league_data.PL_2018-2019`
+WHERE
+  Div IS NULL OR
+  Date IS NULL OR
+  HomeTeam IS NULL OR
+  AwayTeam IS NULL OR
+  HTOa IS NULL OR
+  ATOa IS NULL OR
+  HTAt IS NULL OR
+  ATAt IS NULL OR
+  HTMid IS NULL OR
+  ATMid IS NULL OR
+  HTDef IS NULL OR
+  ATDef IS NULL OR
+  HomeSquad IS NULL OR
+  AwaySquad IS NULL OR
+  HomeAvgAge IS NULL OR
+  AwayAvgAge IS NULL OR
+  HomeMV IS NULL OR
+  AwayMV IS NULL OR
+  FTHG IS NULL OR
+  FTAG IS NULL OR
+  FTR IS NULL OR
+  HTHG IS NULL OR
+  HTAG IS NULL OR
+  HTR IS NULL OR
+  HS IS NULL OR
+  HST IS NULL OR
+  AST IS NULL OR
+  HF IS NULL OR
+  AF IS NULL OR
+  HC IS NULL OR
+  AC IS NULL OR
+  HY IS NULL OR
+  AY IS NULL OR
+  HR IS NULL OR
+  AR IS NULL OR
+  HxG IS NULL OR
+  AxG IS NULL OR
+  HxA IS NULL OR
+  AxA IS NULL OR
+  HxPTS IS NULL OR
+  AxPTS IS NULL OR
+  HPPDA IS NULL OR
+  APPDA IS NULL OR
+  B365H IS NULL OR
+  B365D IS NULL OR
+  B365A IS NULL OR
+  BWH IS NULL OR
+  BWD IS NULL OR
+  BWA IS NULL OR
+  IWH IS NULL OR
+  IWD IS NULL OR
+  IWA IS NULL OR
+  PSH IS NULL OR
+  PSD IS NULL OR
+  PSA IS NULL OR
+  WHH IS NULL OR
+  WHD IS NULL OR
+  WHA IS NULL OR
+  VCH IS NULL OR
+  VCD IS NULL OR
+  VCA IS NULL OR
+  PSCH IS NULL OR
+  PSCD IS NULL OR
+  PSCA IS NULL;
+
+# second way to check for nulls 18/19
+SELECT col_name,
+       COUNT(1) AS nulls_count,
+       round(100*(count(1)/
+                      (SELECT count(*)
+                       FROM `Primier_league_data.PL_2018-2019`)), 2) AS percent_nulls
+FROM `Primier_league_data.PL_2018-2019` t,
+     UNNEST(REGEXP_EXTRACT_ALL(TO_JSON_STRING(t), r'"(\w+)":null')) col_name
+GROUP BY col_name
+ORDER BY nulls_count DESC;
+
+# checking duplicates 380 rows
+SELECT DISTINCT * FROM `Primier_league_data.PL_2018-2019`;
+
+# clean data for 18-19 without the nulls for hxa and axa
+SELECT *
+FROM `project-football-388908.Primier_league_data.PL_2018-2019`
+WHERE HxA IS NOT NULL OR AxA IS NOT NULL;
+
+# checking for nulls and dups for 19-20
+SELECT col_name,
+       COUNT(1) AS nulls_count,
+       round(100*(count(1)/
+                      (SELECT count(*)
+                       FROM `Primier_league_data.PL_2019-2020`)), 2) AS percent_nulls
+FROM `Primier_league_data.PL_2018-2019` t,
+     UNNEST(REGEXP_EXTRACT_ALL(TO_JSON_STRING(t), r'"(\w+)":null')) col_name
+GROUP BY col_name
+ORDER BY nulls_count DESC;
+
+SELECT * FROM `Primier_league_data.PL_2019-2020` WHERE HxA IS NULL OR AxA IS NULL;
+
+# checking duplicates 380 rows
+SELECT DISTINCT * FROM `Primier_league_data.PL_2019-2020`;
+
+# clean date 19-20, so without first row where there were 2 nulls
+SELECT *
+FROM `project-football-388908.Primier_league_data.PL_2019-2020`
+WHERE HxA IS NOT NULL OR AxA IS NOT NULL;
+
+#Year as year_numeric + Order by
+SELECT 
+DISTINCT *,
+CAST(Year as INT) as Year_numeric
+FROM `project-football-388908.Monetary_Squad_Values.Squad_values_all_seasons_clean`
+ORDER BY HomeTeam
+
+#Concat to make a key for a Join_table
+SELECT 
+DISTINCT HomeTeam
+,Season
+,CONCAT(HomeTeam,'-',Season) AS HTS_Key
+,HomeMV
+FROM `Primier_league_data.PL_2014-2022_clean`
+ORDER BY Season
+
+#Making table with certain clubs
+SELECT * 
+FROM `project-football-388908.Transfer_data.PL_transfer_data_final`
+  WHERE year_1 >= 2014 
+  AND transfer_movement = 'in'
+  AND (club_name = 'Arsenal FC' 
+  OR club_name = 'Liverpool FC' 
+  OR club_name = 'Chelsea FC' 
+  OR club_name = 'Manchester City' 
+  OR  club_name = 'Manchester United' 
+  OR  club_name = 'Tottenham')
+ORDER BY club_name;
+
+# checking for nulls transfer data
+SELECT col_name,
+       COUNT(1) AS nulls_count,
+       round(100*(count(1)/
+                      (SELECT count(*)
+                       FROM `project-football-388908.Transfer_data.PL_transfers`)), 2) AS percent_nulls
+FROM `project-football-388908.Transfer_data.PL_transfers` t,
+     UNNEST(REGEXP_EXTRACT_ALL(TO_JSON_STRING(t), r'"(\w+)":null')) col_name
+GROUP BY col_name
+ORDER BY nulls_count DESC;
+
+SELECT * FROM `project-football-388908.Transfer_data.PL_transfers` WHERE fee_cleaned = 'NA'; 
+
+# checking duplicates 23 498 rows 23 485 
+SELECT DISTINCT * FROM `project-football-388908.Transfer_data.PL_transfers`;
+
+# to see which rows are the dups there are 13
+SELECT COUNT(*) as count_dupl, * FROM `project-football-388908.Transfer_data.PL_transfers`
+GROUP BY club_name
+,player_name
+,age
+,position
+,club_involved_name
+,fee
+,transfer_movement
+,transfer_period
+,fee_cleaned
+,league_name
+,year
+,season
+HAVING count_dupl > 1;
+
+# CODE FOR CLEANED DATA
+# we took out the loan's as its without an actual transfer fee and thus not relevent for our research question
+# regarding actual transfers there are 3065 rows of transfers without any fee, likely more unknown players with low undisclosed transfer fees 
+SELECT DISTINCT * FROM `project-football-388908.Transfer_data.PL_transfers` 
+  WHERE fee NOT LIKE '%End of loan%' 
+    and fee NOT LIKE '%loan transfer%' 
+    and fee NOT LIKE '%-%' 
+    and fee NOT LIKE '%?%' 
+    and fee IS NOT NULL;
+
+#changing column names for easier use
+ALTER TABLE `project-football-388908.Primier_league_data.PL_2019-2020_cleaned`
+RENAME COLUMN Div TO Divison,
+RENAME COLUMN HTOa TO Home_Teams_FIFA_Overall_Rating,
+RENAME COLUMN ATOa TO Away_Teams_FIFA_Overall_Rating,
+RENAME COLUMN HTAt TO Home_Teams_FIFA_Attack_Rating,
+RENAME COLUMN ATAt TO Away_Teams_FIFA_Attack_Rating,
+RENAME COLUMN HTMid TO Home_Teams_FIFA_Midfield_Rating,
+RENAME COLUMN ATMid TO Away_Teams_FIFA_Midfield_Rating,
+RENAME COLUMN HTDef TO Home_Teams_FIFA_Defence_Rating,
+RENAME COLUMN ATDef TO Away_Teams_FIFA_Defence_Rating,
+RENAME COLUMN FTHG TO Full_Time_Home_Teams_Goals,
+RENAME COLUMN FTAG TO Full_Time_Away_Teams_Goals,
+RENAME COLUMN HTHG TO Half_Time_Home_Teams_Goals,
+RENAME COLUMN HTAG TO Half_Time_Away_Teams_Goals,
+RENAME COLUMN HS TO Home_Teams_Shots,
+RENAME COLUMN `AS` TO Away_Teams_Shots,
+RENAME COLUMN HST TO Home_Teams_Shots_on_Target,
+RENAME COLUMN AST TO Away_Teams_Shots_on_Target,
+RENAME COLUMN HF TO Home_Teams_Fouls,
+RENAME COLUMN AF TO Away_Teams_Fouls,
+RENAME COLUMN HC TO Home_Teams_Corners,
+RENAME COLUMN AC TO Away_Teams_Corners,
+RENAME COLUMN HY TO Home_Teams_Yellow_Cards,
+RENAME COLUMN AY TO Away_Teams_Yellow_Cards,
+RENAME COLUMN HR TO Home_Teams_Red_Cards,
+RENAME COLUMN AR TO Away_Teams_Red_Cards,
+RENAME COLUMN HxG TO Home_Teams_Expected_Goals,
+RENAME COLUMN AxG TO Away_Teams_Expected_Goals,
+RENAME COLUMN HxA TO Home_Teams_Expected_Goals_After_Key_Passes,
+RENAME COLUMN AxA TO Away_Teams_Expected_Goals_After_Key_Passes,
+RENAME COLUMN HxPTS TO Home_Teams_Expected_Points,
+RENAME COLUMN AxPTS TO Away_Teams_Expected_Points,
+RENAME COLUMN HPPDA TO Home_Teams_passes_allowed_per_defensive_action_in_the_opposition_half,
+RENAME COLUMN APPDA TO Away_Teams_passes_allowed_per_defensive_action_in_the_opposition_half,
+RENAME COLUMN B365H TO Home_Bet365_odds,
+RENAME COLUMN B365D TO Draw_Bet365_odds,
+RENAME COLUMN B365A TO Away_Bet365_odds,
+RENAME COLUMN BWH TO Home_Bet_Win_odds,
+RENAME COLUMN BWD TO Draw_Bet_Win_odds,
+RENAME COLUMN BWA TO Away_Bet_Win_odds,
+RENAME COLUMN IWH TO Home_Interwetten_odds,
+RENAME COLUMN IWD TO Draw_Interwetten_odds,
+RENAME COLUMN IWA TO Away_Interwetten_odds,
+RENAME COLUMN PSH TO Home_Pinnacle_odds,
+RENAME COLUMN PSD TO Draw_Pinnacle_odds, 
+RENAME COLUMN PSA TO Away_Pinnacle_odds,
+RENAME COLUMN WHH TO Home_William_Hill_odds, 
+RENAME COLUMN WHD TO Draw_William_Hill_odds, 
+RENAME COLUMN WHA TO Away_William_Hill_odds,
+RENAME COLUMN VCH TO Home_VC_Bet_odds,
+RENAME COLUMN VCD TO Draw_VC_Bet_odds, 
+RENAME COLUMN VCA TO Away_VC_Bet_odds,
+RENAME COLUMN PSCH TO Home_PSC_odds, 
+RENAME COLUMN PSCD TO Draw_PSC_odds, 
+RENAME COLUMN PSCA TO Away_PSC_odds;
